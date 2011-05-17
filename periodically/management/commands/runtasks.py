@@ -12,5 +12,4 @@ class Command(BaseCommand):
             backends = [task_scheduler.get_backend(id) for id in args]
         
         for backend in backends:
-            print backend
             backend.run_scheduled_tasks()
