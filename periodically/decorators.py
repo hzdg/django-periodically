@@ -8,19 +8,25 @@ from datetime import timedelta
 from . import register
 
 
-def hourly(fn):
-    register.simple_task(fn, timedelta(hours=1), task_id_suffix=':hourly')
-    return fn
+def hourly():
+    def decorator(fn):
+        register.simple_task(fn, timedelta(hours=1), task_id_suffix=':hourly')
+        return fn
+    return decorator
 
 
-def daily(fn):
-    register.simple_task(fn, timedelta(days=1), task_id_suffix=':daily')
-    return fn
+def daily():
+    def decorator(fn):
+        register.simple_task(fn, timedelta(days=1), task_id_suffix=':daily')
+        return fn
+    return decorator
 
 
-def weekly(fn):
-    register.simple_task(fn, timedelta(weeks=1), task_id_suffix=':weekly')
-    return fn
+def weekly():
+    def decorator(fn):
+        register.simple_task(fn, timedelta(weeks=1), task_id_suffix=':weekly')
+        return fn
+    return decorator
 
 
 def every(*args, **kwargs):

@@ -1,5 +1,5 @@
 from periodically.decorators import *
 
-@hourly
+@hourly()
 def f():
     pass
