@@ -5,7 +5,7 @@ actually return the original function.
 """
 
 from datetime import timedelta
-from . import register
+from . import schedule
 
 
 def _create_decorator(repeat_interval, task_id_suffix=None, backend=None):
@@ -19,7 +19,7 @@ def _create_decorator(repeat_interval, task_id_suffix=None, backend=None):
         task_id_suffix = '/every %s' % repeat_interval
     
     def decorator(fn):
-        register.simple_task(fn, repeat_interval,
+        schedule.simple_task(fn, repeat_interval,
             task_id_suffix=task_id_suffix, backend=backend)
         return fn
     return decorator

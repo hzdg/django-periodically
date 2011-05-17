@@ -27,7 +27,7 @@ def autodiscover():
                 raise
 
 
-class TaskRegistry(object):
+class TaskScheduler(object):
 
     _backend_singletons = {} # Maps backend classes to instances.
     _backends = set()
@@ -44,7 +44,7 @@ class TaskRegistry(object):
         for backend in self._backends:
             if getattr(backend, 'id', None) == id:
                 return backend
-        raise TaskRegistry.BackendDoesNotExist
+        raise TaskScheduler.BackendDoesNotExist
 
     def simple_task(self, fn, repeat_interval, task_id_suffix='',
         backend=None):
@@ -74,7 +74,7 @@ class TaskRegistry(object):
         if inspect.isclass(task):
             task = task()
 
-        # If classes are used for backend properties, the TaskRegistry will
+        # If classes are used for backend properties, the TaskScheduler will
         # only create one instance. If you need unique instances, you must
         # instantiate them yourself.
         backend = getattr(task, 'backend', None) or settings.DEFAULT_BACKEND
@@ -90,5 +90,5 @@ class TaskRegistry(object):
         print 'registering %s with id %s' % (task, task.task_id)
 
 
-register = TaskRegistry()
+schedule = TaskScheduler()
 autodiscover()

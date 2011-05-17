@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
-from ... import register as task_registry
+from ... import schedule as task_scheduler
 
 
 class Command(BaseCommand):
@@ -7,9 +7,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if len(args) == 0:
-            backends = task_registry.backends
+            backends = task_scheduler.backends
         else:
-            backends = [task_registry.get_backend(id) for id in args]
+            backends = [task_scheduler.get_backend(id) for id in args]
         
         for backend in backends:
             print backend
