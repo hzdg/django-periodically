@@ -50,13 +50,13 @@ class SchedulerBackend(object):
             log.success = False
             log.save()
 
-            success = False
             try:
                 task.run()
-                sucesss = True
             except:
+                success = False
                 # TODO: Error handling/supression, retries, email notification.
-                pass
+            else:
+                success = True
 
             log.end_time = datetime.now()
             log.success = success
