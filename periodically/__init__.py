@@ -64,8 +64,9 @@ class TaskScheduler(object):
             def run(self, *args, **kwargs):
                 fn(*args, **kwargs)
 
-        self.task(DecoratedTask)
-        return DecoratedTask
+        task_instance = DecoratedTask()
+        self.task(task_instance)
+        return task_instance
 
     def task(self, task):
         """
