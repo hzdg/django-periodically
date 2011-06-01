@@ -10,11 +10,11 @@ def autodiscover():
     when not present.
     """
 
-    from django.conf import settings
+    from django.conf import settings as project_settings
     from django.utils.importlib import import_module
     from django.utils.module_loading import module_has_submodule
 
-    for app in settings.INSTALLED_APPS:
+    for app in project_settings.INSTALLED_APPS:
         mod = import_module(app)
         # Attempt to import the app's periodictasks module.
         try:
@@ -86,8 +86,6 @@ class TaskScheduler(object):
                 backend = self._backend_singletons[cls] = cls()
         self._backends.add(backend)
         backend.schedule(task)
-
-        print 'registering %s with id %s' % (task, task.task_id)
 
 
 schedule = TaskScheduler()

@@ -1,5 +1,5 @@
 from periodically.decorators import *
 
 @hourly()
-def f():
-    pass
+def task1():
+    print 'exampleapp.task1'

@@ -1,20 +1,31 @@
 from .models import TaskLog
 from datetime import datetime
 from .signals import task_complete
+import logging
+import sys
 
 
-class SchedulerBackend(object):
+class BaseBackend(object):
     """
     Keeps a schedule of periodic tasks.
     """
     _tasks = []
+
+    @property
+    def logger(self):
+        return logging.getLogger('periodically') # TODO: Further namespace logger?
+    
+    @property
+    def scheduled_tasks(self):
+        """A list of the scheduled tasks"""
+        return set(self._tasks)
     
     def schedule(self, task):
         """
         Schedules a periodic task.
         """
         if task not in self._tasks:
-            print 'scheduled task %s to run every %s' % (task.task_id, task.repeat_interval)
+            self.logger.info('Scheduling task %s to run every %s' % (task.task_id, task.repeat_interval))
             self._tasks.append(task)
             
             # Subscribe to the task_complete signal. We do this when the task
@@ -24,37 +35,60 @@ class SchedulerBackend(object):
             # determined by polling a web service. When Django restarts, the
             # polling could start again and the task would be completed.)
             if not getattr(task, 'is_blocking', True):
-                task_complete.connect(self._create_receiver(), sender=task.__class__, dispatch_uid=task.task_id)
+                task_complete.connect(self._create_receiver(task.__class__), sender=task.__class__, dispatch_uid=task.task_id)
     
-    def run_scheduled_tasks(self):
+    def run_scheduled_tasks(self, tasks=None):
         """
         Runs any scheduled periodic tasks and ends any tasks that have exceeded
-        their timeout.
+        their timeout. The optional <code>tasks</code> argument allows you to
+        run only a subset of the registered tasks.
         """
-        for task in self._tasks:
-            try:
-                log = TaskLog.objects.get(task_id=task.task_id, end_time__isnull=True)
-            except TaskLog.DoesNotExist:
-                task_is_running = False
-                log = None
-            else:
-                task_is_running = True
+        if tasks is None:
+            tasks_to_run = self._tasks
+        else:
+            tasks_to_run = set(tasks)
+            for task in tasks_to_run:
+                if task not in self._tasks:
+                    raise Exception('%s is not registered with this backend.' % task)
+        
+        for task in tasks_to_run:
+            # Cancel the task if it's timed out.
+            self.check_timeout(task)
             
             # If the task isn't already running, run it now.
-            if not task_is_running:
-                print 'running task %s' % task.task_id
+            log_list = TaskLog.objects.filter(task_id=task.task_id).order_by('-start_time')
+            if log_list:
+                run_now = datetime.now() - log_list[0].start_time >= task.repeat_interval
+            else:
+                run_now = True
+                
+            if run_now:
+                self.logger.info('Running task %s' % task.task_id)
                 self.run_task(task)
-            elif log and datetime.now() > log.start_time + self._get_timeout(task):
-                self.complete_task(task.task_id, Exception('Task timed out after <TIME> time.')) # FIXME: Show the time.
+
+    def check_timeout(self, task):
+        try:
+            task_log = TaskLog.objects.get(task_id=task.task_id, end_time__isnull=True)
+        except TaskLog.DoesNotExist:
+            pass
+        else:
+            from .settings import DEFAULT_TIMEOUT
+            timeout = getattr(task, 'timeout', DEFAULT_TIMEOUT)
+            running_time = datetime.now() - task_log.start_time
+            if running_time > timeout:
+                extra = {
+                    'level': logging.ERROR,
+                    'msg': 'Task timed out after %s.' % running_time,
+                }
+                self.complete_task(task, extra=extra)
     
-    def _get_timeout(self, task):
-        return 1209
-    
-    def task_is_running(self, task):
+    def check_timeouts(self):
         """
-        Determines whether the provided task is currently running.
+        Checks to see whether any scheduled tasks have timed out and handles
+        those that have.
         """
-        return bool()
+        for task in self._tasks:
+            self.check_timeout(task)
     
     def run_task(self, task):
         """
@@ -69,40 +103,50 @@ class SchedulerBackend(object):
         log = TaskLog.objects.create(
             task_id=task.task_id,
             start_time=datetime.now(),
-            end_time=None,
-            is_success=False,)
+            end_time=None,)
 
         # Run the task.
         try:
             task.run()
         except Exception, err:
-            error = err
+            extra = {
+                'level': logging.ERROR,
+                'msg': str(err),
+                'exc_info': sys.exc_info(),
+            }
         else:
-            error = None
+            extra = None
 
-        if error is not None or getattr(task, 'is_blocking', True):
-            self.complete_task(task.task_id, error=error)
+        if extra is not None or getattr(task, 'is_blocking', True):
+            self.complete_task(task, extra=extra)
     
-    def _create_receiver(self):
-        def receiver(task_id, error=None):
-            task_complete.disconnect(receiver, task.__class__, dispatch_uid=task_id)
-            self.complete_task(task_id, error)
+    def _create_receiver(self, sender):
+        def receiver(task, extra=None):
+            task_complete.disconnect(receiver, sender, dispatch_uid=task.task_id)
+            self.complete_task(task, extra=extra)
         return receiver
     
-    def complete_task(self, task_id, error=None):
+    def complete_task(self, task, extra=None):
         """
-        Marks a task as complete and performs other post-completion tasks.
+        Marks a task as complete and performs other post-completion tasks. The
+        <code>extra</code> argument is a dictionary of values to be passed to
+        <code>Logger.log()</code> as keyword args.
         """
-        log = TaskLog.objects.get(task_id=task_id, end_time=None)
-        log.end_time = datetime.now()
-        log.is_success = error is not None
-        log.error_message = str(error)
-        log.save()
-        
-        # TODO: Retries, email notification.
+        if extra is not None:
+            self.logger.log(**extra)
+            completed_successfully = extra.get('level', logging.ERROR) != logging.ERROR
+        else:
+            completed_successfully = True
+            
+        task_log = TaskLog.objects.get(task_id=task.task_id, end_time=None)
+        task_log.end_time = datetime.now()
+        task_log.completed_successfully = completed_successfully
+        task_log.save()
+
+        # TODO: Retries.
 
 
-class CommandBackend(SchedulerBackend):
+class CommandBackend(BaseBackend):
     """A backend that only runs tasks when the runtasks command is called."""
     id = 'command'
     pass

@@ -3,13 +3,14 @@ from periodically import schedule
 from datetime import timedelta
 
 
-@every(minutes=30)
-def f():
-    print 'f'
+@every(minutes=1)
+def task2():
+    print 'exampleapp.periodictasks.task2'
+    raise Exception('Custom exception!')
 
 
-def f2():
-    print 'f2'
+def task3():
+    print 'exampleapp.periodictasks.task3'
 
 
-schedule.simple_task(f2, timedelta(weeks=2))
+schedule.simple_task(task3, timedelta(weeks=2))

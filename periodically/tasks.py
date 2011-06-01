@@ -1,6 +1,6 @@
 class PeriodicTask(object):
     backend = None
-    retries = 0
+    is_blocking = True
     
     @property
     def task_id(self):
