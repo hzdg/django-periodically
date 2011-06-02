@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
-from ... import schedule as task_scheduler
+from ... import register as task_scheduler
 from optparse import make_option
 
 

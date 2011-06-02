@@ -24,7 +24,7 @@ Usage
 
 ### Defining and Scheduling Tasks
 
-Periodically gives you a few ways to define periodic tasks. The easiest is to use the included decorators:
+Periodically gives you a few ways to schedule periodic tasks. The easiest is to use the included decorators:
 
     from periodically.decorators import *
     
@@ -39,18 +39,16 @@ Periodically gives you a few ways to define periodic tasks. The easiest is to us
 However, you can also define task classes:
 
     from periodically.tasks import PeriodicTask
-    from periodically import schedule
-    from datetime import timedelta
+    from periodically import register
+    from periodically.schedules import Daily
     
     # Define the task.
     class MyTask(PeriodicTask):
-        repeat_interval = timedelta(minutes=14)
-
         def run(self, *args, **kwargs):
-            print 'Do something every 14 minutes!'
+            print 'Do something.'
     
     # Schedule the task.
-    schedule.task(MyTask())
+    register.task(MyTask(), Daily())
 
 Tasks can be scheduled anywhere in your project, but Periodically automatically looks for a `periodictasks` module in your `INSTALLED_APPS`, so it's probably a good idea to define all your tasks in `myapp/periodictasks.py`.
 

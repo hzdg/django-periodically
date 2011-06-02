@@ -3,13 +3,19 @@ from datetime import datetime
 from .signals import task_complete
 import logging
 import sys
+from collections import defaultdict
+
+
+class TaskInfo(object):
+    def __init__(self):
+        self.schedules = set()
 
 
 class BaseBackend(object):
     """
     Keeps a schedule of periodic tasks.
     """
-    _tasks = []
+    _tasks = defaultdict(TaskInfo)
 
     @property
     def logger(self):
@@ -18,24 +24,25 @@ class BaseBackend(object):
     @property
     def scheduled_tasks(self):
         """A list of the scheduled tasks"""
-        return set(self._tasks)
+        return [info.task for info in self._tasks.values()]
     
-    def schedule(self, task):
+    def schedule_task(self, task, schedule):
         """
         Schedules a periodic task.
         """
-        if task not in self._tasks:
-            self.logger.info('Scheduling task %s to run every %s' % (task.task_id, task.repeat_interval))
-            self._tasks.append(task)
-            
-            # Subscribe to the task_complete signal. We do this when the task
-            # is scheduled (instead of when it runs) so that if you kill Django
-            # with unfinished tasks still running, they will be able to
-            # complete. (For example, whether a task is completed might be
-            # determined by polling a web service. When Django restarts, the
-            # polling could start again and the task would be completed.)
-            if not getattr(task, 'is_blocking', True):
-                task_complete.connect(self._create_receiver(task.__class__), sender=task.__class__, dispatch_uid=task.task_id)
+        task_id = task.task_id
+        self.logger.info('Scheduling task %s to run on schedule %s' % (task_id, schedule))
+        self._tasks[task_id].task = task
+        self._tasks[task_id].schedules.add(schedule)
+        
+        # Subscribe to the task_complete signal. We do this when the task
+        # is scheduled (instead of when it runs) so that if you kill Django
+        # with unfinished tasks still running, they will be able to
+        # complete. (For example, whether a task is completed might be
+        # determined by polling a web service. When Django restarts, the
+        # polling could start again and the task would be completed.)
+        if not getattr(task, 'is_blocking', True):
+            task_complete.connect(self._create_receiver(task.__class__), sender=task.__class__, dispatch_uid=task_id)
     
     def run_scheduled_tasks(self, tasks=None):
         """
@@ -44,27 +51,25 @@ class BaseBackend(object):
         run only a subset of the registered tasks.
         """
         if tasks is None:
-            tasks_to_run = self._tasks
+            tasks_to_run = self._tasks.values()
         else:
-            tasks_to_run = set(tasks)
-            for task in tasks_to_run:
-                if task not in self._tasks:
+            tasks_to_run = []
+            for task in tasks:
+                if task.task_id not in self._tasks:
                     raise Exception('%s is not registered with this backend.' % task)
+                else:
+                    tasks_to_run.append(self._tasks[task.task_id])
         
-        for task in tasks_to_run:
+        for info in tasks_to_run:
+            task = info.task
+            schedules = info.schedules
+            
             # Cancel the task if it's timed out.
             self.check_timeout(task)
-            
-            # If the task isn't already running, run it now.
-            log_list = TaskLog.objects.filter(task_id=task.task_id).order_by('-start_time')
-            if log_list:
-                run_now = datetime.now() - log_list[0].start_time >= task.repeat_interval
-            else:
-                run_now = True
-                
-            if run_now:
-                self.logger.info('Running task %s' % task.task_id)
-                self.run_task(task)
+            for schedule in schedules:
+                if schedule.task_should_run(task):
+                    self.logger.info('Running task %s' % task.task_id)
+                    self.run_task(task)
 
     def check_timeout(self, task):
         try:
@@ -87,8 +92,8 @@ class BaseBackend(object):
         Checks to see whether any scheduled tasks have timed out and handles
         those that have.
         """
-        for task in self._tasks:
-            self.check_timeout(task)
+        for info in self._tasks.values():
+            self.check_timeout(info.task)
     
     def run_task(self, task):
         """

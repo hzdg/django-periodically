@@ -1,5 +1,5 @@
 from periodically.decorators import *
-from periodically import schedule
+from periodically import register
 from datetime import timedelta
 
 
@@ -13,4 +13,4 @@ def task3():
     print 'exampleapp.periodictasks.task3'
 
 
-schedule.simple_task(task3, timedelta(weeks=2))
+register.simple_task(task3, Every(timedelta(weeks=2)))

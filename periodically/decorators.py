@@ -5,22 +5,18 @@ actually return the original function.
 """
 
 from datetime import timedelta
-from . import schedule
+from . import register
+from .schedules import Every, Hourly, Daily, Weekly
 
 
-def _create_decorator(repeat_interval, task_id_suffix=None, backend=None):
+def _create_decorator(schedule, backend=None):
     """
-    Creates a decorator that registers a periodic tasks. Decorators in this
+    Creates a decorator that registers periodic tasks. Decorators in this
     module delegate to this method in the interest of DRY: it handles all of
     the common arguments.
     """
-    
-    if task_id_suffix is None:
-        task_id_suffix = '/every %s' % repeat_interval
-    
     def decorator(fn):
-        schedule.simple_task(fn, repeat_interval,
-            task_id_suffix=task_id_suffix, backend=backend)
+        register.simple_task(fn, schedule, backend=backend)
         return fn
     return decorator
 
@@ -33,19 +29,16 @@ def every(interval=None, days=0, seconds=0, microseconds=0, milliseconds=0,
     if interval is None:
         interval = timedelta(days, seconds, microseconds, milliseconds,
             minutes, hours, weeks)
-    return _create_decorator(interval, *args, **kwargs)
+    return _create_decorator(Every(interval), *args, **kwargs)
 
 
 def hourly(*args, **kwargs):
-    return _create_decorator(timedelta(hours=1), task_id_suffix='/hourly',
-        *args, **kwargs)
+    return _create_decorator(Hourly(), *args, **kwargs)
 
 
 def daily(*args, **kwargs):
-    return _create_decorator(timedelta(days=1), task_id_suffix='/daily',
-        *args, **kwargs)
+    return _create_decorator(Daily(), *args, **kwargs)
 
 
 def weekly(*args, **kwargs):
-    return _create_decorator(timedelta(weeks=1), task_id_suffix='/weekly',
-        *args, **kwargs)
+    return _create_decorator(Weekly(), *args, **kwargs)

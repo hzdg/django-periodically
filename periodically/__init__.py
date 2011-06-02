@@ -27,7 +27,7 @@ def autodiscover():
                 raise
 
 
-class TaskScheduler(object):
+class TaskRegistry(object):
 
     _backend_singletons = {} # Maps backend classes to instances.
     _backends = set()
@@ -44,41 +44,37 @@ class TaskScheduler(object):
         for backend in self._backends:
             if getattr(backend, 'id', None) == id:
                 return backend
-        raise TaskScheduler.BackendDoesNotExist
+        raise TaskRegistry.BackendDoesNotExist
 
-    def simple_task(self, fn, repeat_interval, task_id_suffix='',
-        backend=None):
+    def simple_task(self, fn, schedule, backend=None):
         """
         Registers a callable as a periodic task.
         """
-        _task_id = '%s.%s%s' % (fn.__module__, fn.__name__, task_id_suffix)
-        _repeat_interval = repeat_interval
-        _backend = backend
+        _task_id = '%s.%s' % (fn.__module__, fn.__name__)
 
         # Create a PeriodicTask subclass that wraps the function.
         class DecoratedTask(PeriodicTask):
-            backend = _backend
             task_id = _task_id
-            repeat_interval = _repeat_interval
 
             def run(self, *args, **kwargs):
                 fn(*args, **kwargs)
 
         task_instance = DecoratedTask()
-        self.task(task_instance)
+        self.task(task_instance, schedule, backend)
         return task_instance
 
-    def task(self, task):
+    def task(self, task, schedule, backend=None):
         """
         Registers a periodic task.
         """
         if inspect.isclass(task):
             task = task()
 
-        # If classes are used for backend properties, the TaskScheduler will
-        # only create one instance. If you need unique instances, you must
-        # instantiate them yourself.
-        backend = getattr(task, 'backend', None) or settings.DEFAULT_BACKEND
+        # If backend is passed as a class, the TaskRegistry will only create
+        # one instance. If you need unique instances, you must instantiate them
+        # yourself.
+        if backend is None:
+            backend = settings.DEFAULT_BACKEND
         if inspect.isclass(backend):
             cls = backend
             try:
@@ -86,8 +82,8 @@ class TaskScheduler(object):
             except KeyError:
                 backend = self._backend_singletons[cls] = cls()
         self._backends.add(backend)
-        backend.schedule(task)
+        backend.schedule_task(task, schedule)
 
 
-schedule = TaskScheduler()
+register = TaskRegistry()
 autodiscover()
