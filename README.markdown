@@ -56,7 +56,76 @@ Tasks can be scheduled anywhere in your project, but Periodically automatically 
 
 Periodically uses a pluggable backend system to decouple the defining and scheduling of your tasks from their execution. **The default backend will not run your tasks automatically**, so you need to tell it to by using the `runtasks` management command. Generally, you would use a cronjob (or similar) to do this.  For example, placing the following line in your crontab file would check for tasks that need to be run every five minutes:
 
-    */5 * * * * /path/to/manage.py runtasks
+    */5 * * * * python /path/to/manage.py runtasks
+
+### Scheduler Backends
+
+One of the things that makes Periodically so flexible is its scheduler backend system. A single project can even use multiple backends!
+
+#### Using Custom Backends
+
+In `settings.py`:
+
+	PERIODICALLY_SETTINGS = {
+		...
+	    'SCHEDULERS': {
+			'special': {
+				'backend': 'myapp.MySpecialBackend',
+			},
+	    },
+	}
+
+Then, in your app's `periodictasks.py` file:
+
+    @hourly(backend='special')
+    def do_something():
+		print 'Doing something!'
+
+This setup works great for scheduling a specific task with a particular backend, but if you find that you want to change the backend that all of your tasks use, it's easier to just override the default:
+
+	PERIODICALLY_SETTINGS = {
+		...
+	    'SCHEDULERS': {
+			'default': {
+				'backend': 'myapp.MySpecialBackend',
+			},
+	    },
+	}
+
+With the above code in your `settings.py` file, all tasks will use `myapp.MySpecialBackend` by default.
+
+#### Backend Groups
+
+Sometimes it's convenient to create backend groups. A good example of this is when you have several different backends that should all be triggered by a cron job. Here's how you add backends to groups in your `settings.py` file:
+
+	PERIODICALLY_SETTINGS = {
+		...
+	    'SCHEDULERS': {
+			'default': {
+				'backend': 'myapp.MySpecialBackend',
+				'groups': ['cron'],
+			},
+			'special': {
+				'backend': 'myapp.MySpecialBackend',
+				'groups': ['cron'],
+			},
+			'another': {
+				'backend': 'myapp.AnotherBackend',
+			},
+	    },
+	}
+
+Now you'll be able to use the `--group` option of the `runtasks` management command to selectively run tasks:
+
+    python manage.py runtasks --group cron
+
+Your crontab would now look like this:
+
+    */5 * * * * python /path/to/manage.py runtasks --group cron
+
+##### TIP
+
+If you plan to use a cron job to trigger task execution, it's a good idea to always create a "cron" group. That way, if you ever add new non-cron backends, you won't have to change your crontab; you just won't add your new backend to the "cron" group.
 
 ### Logging
 

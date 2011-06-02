@@ -59,7 +59,7 @@ class BaseBackend(object):
                     raise Exception('%s is not registered with this backend.' % task)
                 else:
                     tasks_to_run.append(self._tasks[task.task_id])
-        
+
         for info in tasks_to_run:
             task = info.task
             schedules = info.schedules

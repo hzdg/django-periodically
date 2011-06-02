@@ -1,6 +1,6 @@
 import inspect
-from . import settings
 from .tasks import PeriodicTask
+from .utils import get_scheduler_backend_class
 
 
 # Based on django's admin app's autodiscover.
@@ -59,18 +59,12 @@ class TaskRegistry(object):
         """
         if inspect.isclass(task):
             task = task()
-
-        # If backend is passed as a class, the TaskRegistry will only create
-        # one instance. If you need unique instances, you must instantiate them
-        # yourself.
-        if backend is None:
-            backend = settings.DEFAULT_BACKEND
-        if inspect.isclass(backend):
-            cls = backend
-            try:
-                backend = self._backend_singletons[cls]
-            except KeyError:
-                backend = self._backend_singletons[cls] = cls()
+            
+        backend_class = get_scheduler_backend_class(backend)
+        try:
+            backend = self._backend_singletons[backend_class]
+        except KeyError:
+            backend = self._backend_singletons[backend_class] = backend_class()
         self._backends.add(backend)
         backend.schedule_task(task, schedule)
 

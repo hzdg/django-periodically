@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 from ... import register as task_scheduler
 from optparse import make_option
-from ...settings import BACKEND_GROUPS
+from ...utils import get_scheduler_backends_in_groups
 
 
 class InvalidBackendGroupError(Exception):
@@ -18,12 +18,12 @@ class Command(BaseCommand):
     help = "Runs scheduled tasks."
 
     option_list = BaseCommand.option_list + (
-        make_option('--backend',
+        make_option('--group',
             dest='backend_groups',
             type='string',
             action='append',
             default=None,
-            help='A list of backend groups that should run their scheduled tasks. Backend groups can be defined in your settings.py f'
+            help='The scheduler group that should run its scheduled tasks. Groups can be defined in your settings.py file.'
         ),
     )
 
@@ -32,23 +32,7 @@ class Command(BaseCommand):
         backend_groups = options.get('backend_groups', None)
         
         if backend_groups:
-            backend_classes = set()
-            for backend_group in backend_groups:
-                try:
-                    backend_paths = BACKEND_GROUPS[backend_group]
-                except KeyError:
-                    raise InvalidBackendGroupError(backend_group)
-
-                for backend_path in backend_paths:
-                    mod_path, cls_name = backend_path.rsplit('.', 1)
-                    try:
-                        mod = importlib.import_module(mod_path)
-                        backend_class = getattr(mod, cls_name)
-                    except (AttributeError, ImportError):
-                        raise InvalidBackendError("Could not find backend '%s'" % backend_path)
-
-                    backend_classes.add(backend_class)
-            backends = [backend_class() for backend_class in backend_classes]
+            backends = get_scheduler_backends_in_groups(backend_groups)
         else:
             backends = task_scheduler.backends
         

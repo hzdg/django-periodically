@@ -1,5 +1,5 @@
 class PeriodicTask(object):
-    backend = None
+    backend = 'default'
     is_blocking = True
     
     @property
