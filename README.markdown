@@ -44,7 +44,7 @@ However, you can also define task classes:
     
     # Define the task.
     class MyTask(PeriodicTask):
-        def run(self, *args, **kwargs):
+        def run(self):
             print 'Do something.'
     
     # Schedule the task.
