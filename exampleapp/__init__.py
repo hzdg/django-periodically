@@ -4,4 +4,4 @@ from periodically.decorators import *
 @hourly()
 @hourly() # This repetition should have no effect.
 def task1():
-    print 'exampleapp.task1'
+    print 'RUNNING exampleapp.task1'

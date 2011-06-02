@@ -3,31 +3,56 @@ from .models import TaskLog
 
 
 class Schedule(object):
-    pass
+    def get_previous_log(self, task):
+        log_list = TaskLog.objects.filter(task_id=task.task_id).order_by('-start_time')
+        if log_list:
+            return log_list[0]
+        else:
+            return None
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 
 class PeriodicSchedule(Schedule):
     
     def task_should_run(self, task):
-        log_list = TaskLog.objects.filter(task_id=task.task_id).order_by('-start_time')
-        if log_list:
-            run = datetime.now() - log_list[0].start_time >= self.repeat_interval
-        else:
-            run = True
-        return run
-    
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
-    
-    def __ne__(self, other):
-        return not self.__eq__(other)
+        previous_log = self.get_previous_log(task)
+        return not previous_log or datetime.now() - previous_log.start_time >= self.repeat_interval
     
     def __hash__(self):
-        return hash(self.repeat_interval)
+        return hash((PeriodicSchedule, self.repeat_interval))
     
 
-class Daily(PeriodicSchedule):
-    repeat_interval = timedelta(days=1)
+class Daily(Schedule):
+    
+    def __init__(self, hour=0, minute=0, second=0, microsecond=0):
+        self.hour = hour
+        self.minute = minute
+        self.second = second
+        self.microsecond = microsecond
+    
+    def __hash__(self):
+        return hash((Daily, self.hour, self.minute, self.second, self.microsecond))
+    
+    def task_should_run(self, task):
+        previous_log = self.get_previous_log(task)
+        if previous_log:
+            last_run_date = datetime.date(previous_log.start_time)
+            current_time = datetime.now()
+            current_date = datetime.date(current_time)
+            if current_date > last_run_date:
+                run_after_time = datetime(current_date.year,
+                    current_date.month, current_date.day, self.hour,
+                    self.minute, self.second, self.microsecond)
+                if current_time > run_after_time:
+                    return True
+            return False
+        else:
+            return True
 
 
 class Hourly(PeriodicSchedule):
@@ -45,9 +70,12 @@ class Weekly(PeriodicSchedule):
 
 
 class Every(PeriodicSchedule):
-    def __init__(self, repeat_interval):
+    def __init__(self, interval=None, days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0):
         super(Every, self).__init__()
-        self.repeat_interval = repeat_interval
+        if interval is None:
+            interval = timedelta(days, seconds, microseconds, milliseconds,
+                minutes, hours, weeks)
+        self.repeat_interval = interval
     
     def __unicode__(self):
         return 'Every %s' % self.repeat_interval
