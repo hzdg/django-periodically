@@ -151,7 +151,9 @@ class BaseBackend(object):
         # TODO: Retries.
 
 
-class CommandBackend(BaseBackend):
-    """A backend that only runs tasks when the runtasks command is called."""
-    id = 'command'
+class DefaultBackend(BaseBackend):
+    """
+    A backend that only runs tasks when explicitly told to (i.e. when its
+    `run_scheduled_tasks()` method is invoked).
+    """
     pass

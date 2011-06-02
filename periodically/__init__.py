@@ -32,19 +32,9 @@ class TaskRegistry(object):
     _backend_singletons = {} # Maps backend classes to instances.
     _backends = set()
 
-    class BackendDoesNotExist(Exception):
-        # TODO: A message that includes the backend id that doesn't exist, perhaps?
-        pass
-
     @property
     def backends(self):
         return self._backends
-
-    def get_backend(self, id):
-        for backend in self._backends:
-            if getattr(backend, 'id', None) == id:
-                return backend
-        raise TaskRegistry.BackendDoesNotExist
 
     def simple_task(self, fn, schedule, backend=None):
         """
