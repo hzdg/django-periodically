@@ -56,7 +56,7 @@ Tasks can be scheduled anywhere in your project, but Periodically automatically 
 
 Periodically uses a pluggable backend system to decouple the defining and scheduling of your tasks from their execution. **The default backend will not run your tasks automatically**, so you need to tell it to by using the `runtasks` management command. Generally, you would use a cronjob (or similar) to do this.  For example, placing the following line in your crontab file would check for tasks that need to be run every five minutes:
 
-    */5 * * * * manage.py runtasks
+    */5 * * * * /path/to/manage.py runtasks
 
 ### Logging
 
