@@ -72,13 +72,21 @@ class BaseBackend(object):
             # Run the task if it's due (or past due).
             for schedule in schedules:
                 if force or schedule.get_scheduled_time(task) <= datetime.now():
-                    fake_task = fake or fake is None and schedule.get_previous_record(task) is None
+                    previous_record = schedule.get_previous_record(task)
+                    fake_task = fake or fake is None and previous_record is None
+                    
+                    # If we're forcing the task, use the previous scheduled
+                    # time. That way we don't put off any upcoming tasks whose
+                    # schedule's get_scheduled_time method relies on the time
+                    # of the previous execution.
+                    scheduled_time = previous_record.scheduled_time if force and previous_record else None
+
                     if fake_task:
                         self.logger.info('Faking task %s' % task.task_id)
-                        self.fake_task(task, schedule)
+                        self.fake_task(task, schedule, scheduled_time)
                     else:
                         self.logger.info('Running task %s' % task.task_id)
-                        self.run_task(task, schedule)
+                        self.run_task(task, schedule, scheduled_time)
     
     def get_task_info_list(self, tasks=None):
         if tasks is None:
@@ -112,12 +120,15 @@ class BaseBackend(object):
         for info in self._tasks.values():
             self.check_timeout(info.task)
     
-    def fake_task(self, task, schedule):
+    def fake_task(self, task, schedule, scheduled_time=None):
+        if scheduled_time is None:
+            scheduled_time = schedule.get_scheduled_time(task)
+        
         # Create the log for this execution.
         log = ExecutionRecord.objects.create(
             task_id=task.task_id,
             schedule_id=schedule.__hash__(),
-            scheduled_time=schedule.get_scheduled_time(task),
+            scheduled_time=scheduled_time,
             start_time=datetime.now(),
             end_time=datetime.now(),
             is_fake=True,)
@@ -131,11 +142,14 @@ class BaseBackend(object):
         can call task.run() directly (avoiding this method), but it is highly
         discouraged.
         """
+        if scheduled_time is None:
+            scheduled_time = schedule.get_scheduled_time(task)
+        
         # Create the log for this execution.
         log = ExecutionRecord.objects.create(
             task_id=task.task_id,
             schedule_id=schedule.__hash__(),
-            scheduled_time=schedule.get_scheduled_time(task),
+            scheduled_time=scheduled_time,
             start_time=datetime.now(),
             end_time=None,)
 
