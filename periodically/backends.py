@@ -108,6 +108,7 @@ class BaseBackend(object):
         log = ExecutionRecord.objects.create(
             task_id=task.task_id,
             schedule_id=schedule.__hash__(),
+            scheduled_time=schedule.get_next_run_time(task),
             start_time=datetime.now(),
             end_time=None,)
 

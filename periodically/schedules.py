@@ -22,7 +22,7 @@ class PeriodicSchedule(Schedule):
     def get_next_run_time(self, task):
         previous_record = self.get_previous_record(task)
         if previous_record:
-            next_run_time = previous_record.start_time + self.repeat_interval
+            next_run_time = previous_record.scheduled_time + self.repeat_interval
         else:
             next_run_time = datetime.datetime.now()
         return next_run_time
@@ -47,7 +47,7 @@ class Daily(Schedule):
     def get_next_run_time(self, task):
         previous_record = self.get_previous_record(task)
         if previous_record:
-            previous_run_date = datetime.datetime.date(previous_record.start_time)
+            previous_run_date = datetime.datetime.date(previous_record.scheduled_time)
             next_run_date = previous_run_date + datetime.timedelta(days=1)
         else:
             next_run_date = datetime.date.today()
