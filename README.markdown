@@ -17,6 +17,7 @@ Installation
 
 1. `pip install git+https://github.com/hzdg/django-periodically.git#egg=django-periodically`
 2. Add 'periodically' to your `INSTALLED_APPS` in settings.py.
+3. `python manage.py syncdb`
 
 
 Usage
