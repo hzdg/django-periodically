@@ -3,7 +3,6 @@ from datetime import datetime
 from .signals import task_complete
 import logging
 import sys
-from collections import defaultdict
 
 
 # FIXME: We really need to clarify our use of the word "scheduled." Does it mean scheduled with the backend (as in schedule_task) or scheduled to run (as in run_scheduled_tasks)
@@ -61,17 +60,15 @@ class BaseBackend(object):
         self._run_tasks(tasks, fake, True)
     
     def _run_tasks(self, tasks=None, fake=None, force=False):
-        scheduled_task_ids = set([task.task_id for task in self.tasks])
-
         # Verify that the provided tasks actually exist.
         if tasks:
             for task in tasks:
-                if task.task_id not in scheduled_task_ids:
+                if task.task_id not in set([task.task_id for task in self.tasks]):
                     raise Exception('%s is not registered with this backend.' % task)
         
         for task, schedule in self._schedules:
-            if not tasks or task.task_id in scheduled_task_ids:
-            
+            if not tasks or task.task_id in [task.task_id for task in tasks]:
+                
                 # Cancel the task if it's timed out.
                 # FIXME: This should only be called once per task (no matter how many times it's scheduled).
                 self.check_timeout(task)
