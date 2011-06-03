@@ -19,7 +19,7 @@ class Schedule(object):
 
 class PeriodicSchedule(Schedule):
         
-    def get_next_run_time(self, task):
+    def get_scheduled_time(self, task):
         previous_record = self.get_previous_record(task)
         if previous_record:
             next_run_time = previous_record.scheduled_time + self.repeat_interval
@@ -44,7 +44,7 @@ class Daily(Schedule):
         class_name = '%s.%s' % (self.__module__, self.__class__)
         return hash((class_name, self.hour, self.minute, self.second, self.microsecond))
     
-    def get_next_run_time(self, task):
+    def get_scheduled_time(self, task):
         previous_record = self.get_previous_record(task)
         today = datetime.date.today()
         time = datetime.time(self.hour, self.minute, self.second, self.microsecond)
@@ -52,9 +52,9 @@ class Daily(Schedule):
         
         if previous_record:
             previous_run_date = datetime.datetime.date(previous_record.scheduled_time)
-            next_run_date = previous_run_date + datetime.timedelta(days=1)
-            next_run_time = datetime.datetime.combine(next_run_date, time)
-            use_last_skipped_time = next_run_time < now
+            scheduled_date = previous_run_date + datetime.timedelta(days=1)
+            scheduled_time = datetime.datetime.combine(scheduled_date, time)
+            use_last_skipped_time = scheduled_time < now
         else:
             use_last_skipped_time = True
 
@@ -64,11 +64,11 @@ class Daily(Schedule):
         if use_last_skipped_time:
             todays_run_time = datetime.datetime.combine(today, time)
             if todays_run_time < now:
-                next_run_time = todays_run_time
+                scheduled_time = todays_run_time
             else:
-                next_run_time = todays_run_time - datetime.timedelta(days=1)
+                scheduled_time = todays_run_time - datetime.timedelta(days=1)
 
-        return next_run_time
+        return scheduled_time
 
 
 class Hourly(PeriodicSchedule):

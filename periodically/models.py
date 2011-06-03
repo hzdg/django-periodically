@@ -8,6 +8,7 @@ class ExecutionRecord(models.Model):
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(blank=True, null=True)
     completed_successfully = models.BooleanField(default=False)
+    is_fake = models.BooleanField(default=False)
     
     def __unicode__(self):
         return '%s @ %s' % (self.task_id, self.start_time)

@@ -23,13 +23,27 @@ class Command(BaseCommand):
             type='string',
             action='append',
             default=None,
-            help='The scheduler group that should run its scheduled tasks. Groups can be defined in your settings.py file.'
+            help='The scheduler group that should run its scheduled tasks. Groups can be defined in your settings.py file.',
+        ),
+        make_option('--force',
+            dest='force_execution',
+            action='store_true',
+            default=False,
+            help='Use this flag to run tasks regardless of whether they are scheduled to be run.',
+        ),
+        make_option('--fake',
+            dest='fake',
+            action='store_true',
+            default=None,
+            help='Use this flag to create execution records for tasks without actually running them. If the flag is not used, the backend will decide whether to fake tasks.',
         ),
     )
 
     def handle(self, *args, **options):
         task_ids = args
         backend_groups = options.get('backend_groups', None)
+        fake = options['fake']
+        force_execution = options['force_execution']
         
         if backend_groups:
             backends = get_scheduler_backends_in_groups(backend_groups)
@@ -41,4 +55,7 @@ class Command(BaseCommand):
                 tasks = set([task for task in backend.scheduled_tasks if task.task_id in task_ids])
             else:
                 tasks = backend.scheduled_tasks
-            backend.run_scheduled_tasks(tasks)
+            if force_execution:
+                backend.run_tasks(tasks, fake=fake)
+            else:
+                backend.run_scheduled_tasks(tasks, fake=fake)

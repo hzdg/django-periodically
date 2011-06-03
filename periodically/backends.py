@@ -6,6 +6,9 @@ import sys
 from collections import defaultdict
 
 
+# FIXME: We really need to clarify our use of the word "scheduled." Does it mean scheduled with the backend (as in schedule_task, scheduled_tasks) or scheduled to run (as in run_scheduled_tasks)
+
+
 class TaskInfo(object):
     def __init__(self):
         self.schedules = set()
@@ -44,12 +47,21 @@ class BaseBackend(object):
         if not getattr(task, 'is_blocking', True):
             task_complete.connect(self._create_receiver(task.__class__), sender=task.__class__, dispatch_uid=task_id)
     
-    def run_scheduled_tasks(self, tasks=None):
+    def run_scheduled_tasks(self, tasks=None, fake=None):
         """
         Runs any scheduled periodic tasks and ends any tasks that have exceeded
         their timeout. The optional <code>tasks</code> argument allows you to
         run only a subset of the registered tasks.
         """
+        self._run_tasks(tasks, fake, False)
+
+    def run_tasks(self, tasks=None, fake=None):
+        """
+        Run tasks regardless of whether they are scheduled.
+        """
+        self._run_tasks(tasks, fake, True)
+    
+    def _run_tasks(self, tasks=None, fake=None, force=False):
         for info in self.get_task_info_list(tasks):
             task = info.task
             schedules = info.schedules
@@ -59,10 +71,15 @@ class BaseBackend(object):
             
             # Run the task if it's due (or past due).
             for schedule in schedules:
-                if schedule.get_next_run_time(task) <= datetime.now():
-                    self.logger.info('Running task %s' % task.task_id)
-                    self.run_task(task, schedule)
-
+                if force or schedule.get_scheduled_time(task) <= datetime.now():
+                    fake_task = fake or fake is None and schedule.get_previous_record(task) is None
+                    if fake_task:
+                        self.logger.info('Faking task %s' % task.task_id)
+                        self.fake_task(task, schedule)
+                    else:
+                        self.logger.info('Running task %s' % task.task_id)
+                        self.run_task(task, schedule)
+    
     def get_task_info_list(self, tasks=None):
         if tasks is None:
             task_info_list = self._tasks.values()
@@ -95,6 +112,16 @@ class BaseBackend(object):
         for info in self._tasks.values():
             self.check_timeout(info.task)
     
+    def fake_task(self, task, schedule):
+        # Create the log for this execution.
+        log = ExecutionRecord.objects.create(
+            task_id=task.task_id,
+            schedule_id=schedule.__hash__(),
+            scheduled_time=schedule.get_scheduled_time(task),
+            start_time=datetime.now(),
+            end_time=datetime.now(),
+            is_fake=True,)
+    
     def run_task(self, task, schedule):
         """
         Runs the provided task. This method is provided as a convenience to
@@ -108,7 +135,7 @@ class BaseBackend(object):
         log = ExecutionRecord.objects.create(
             task_id=task.task_id,
             schedule_id=schedule.__hash__(),
-            scheduled_time=schedule.get_next_run_time(task),
+            scheduled_time=schedule.get_scheduled_time(task),
             start_time=datetime.now(),
             end_time=None,)
 
