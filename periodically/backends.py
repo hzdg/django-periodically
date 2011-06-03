@@ -66,8 +66,10 @@ class BaseBackend(object):
                 if task.task_id not in set([task.task_id for task in self.tasks]):
                     raise Exception('%s is not registered with this backend.' % task)
         
+        registered_task_ids = [task.task_id for task in tasks]
+        
         for task, schedule in self._schedules:
-            if not tasks or task.task_id in [task.task_id for task in tasks]:
+            if not tasks or task.task_id in registered_task_ids:
                 
                 # Cancel the task if it's timed out.
                 # FIXME: This should only be called once per task (no matter how many times it's scheduled).
