@@ -133,7 +133,7 @@ class BaseBackend(object):
             end_time=datetime.now(),
             is_fake=True,)
     
-    def run_task(self, task, schedule):
+    def run_task(self, task, schedule, scheduled_time=None):
         """
         Runs the provided task. This method is provided as a convenience to
         subclasses so that they do not have to implement all of the extra stuff
