@@ -6,37 +6,36 @@ import sys
 from collections import defaultdict
 
 
-# FIXME: We really need to clarify our use of the word "scheduled." Does it mean scheduled with the backend (as in schedule_task, scheduled_tasks) or scheduled to run (as in run_scheduled_tasks)
-
-
-class TaskInfo(object):
-    def __init__(self):
-        self.schedules = set()
+# FIXME: We really need to clarify our use of the word "scheduled." Does it mean scheduled with the backend (as in schedule_task) or scheduled to run (as in run_scheduled_tasks)
 
 
 class BaseBackend(object):
     """
     Keeps a schedule of periodic tasks.
     """
-    _tasks = defaultdict(TaskInfo)
+    _schedules = []
 
     @property
     def logger(self):
         return logging.getLogger('periodically') # TODO: Further namespace logger?
     
     @property
-    def scheduled_tasks(self):
-        """A list of the scheduled tasks"""
-        return [info.task for info in self._tasks.values()]
+    def tasks(self):
+        """A list of the tasks scheduled with this backend."""
+        return set([task for task, schedule in self._schedules])
     
     def schedule_task(self, task, schedule):
         """
         Schedules a periodic task.
         """
+        # Don't add the same one twice.
+        for t, s in self._schedules:
+            if t.task_id == task.task_id and s == schedule:
+                return
+        
         task_id = task.task_id
         self.logger.info('Scheduling task %s to run on schedule %s' % (task_id, schedule))
-        self._tasks[task_id].task = task
-        self._tasks[task_id].schedules.add(schedule)
+        self._schedules.append((task, schedule))
         
         # Subscribe to the task_complete signal. We do this when the task
         # is scheduled (instead of when it runs) so that if you kill Django
@@ -62,19 +61,26 @@ class BaseBackend(object):
         self._run_tasks(tasks, fake, True)
     
     def _run_tasks(self, tasks=None, fake=None, force=False):
-        for info in self.get_task_info_list(tasks):
-            task = info.task
-            schedules = info.schedules
+        scheduled_task_ids = set([task.task_id for task in self.tasks])
+
+        # Verify that the provided tasks actually exist.
+        if tasks:
+            for task in tasks:
+                if task.task_id not in scheduled_task_ids:
+                    raise Exception('%s is not registered with this backend.' % task)
+        
+        for task, schedule in self._schedules:
+            if not tasks or task.task_id in scheduled_task_ids:
             
-            # Cancel the task if it's timed out.
-            self.check_timeout(task)
+                # Cancel the task if it's timed out.
+                # FIXME: This should only be called once per task (no matter how many times it's scheduled).
+                self.check_timeout(task)
             
-            # Run the task if it's due (or past due).
-            for schedule in schedules:
+                # Run the task if it's due (or past due).
                 if force or schedule.get_scheduled_time(task) <= datetime.now():
                     previous_record = schedule.get_previous_record(task)
                     fake_task = fake or fake is None and previous_record is None
-                    
+                
                     # If we're forcing the task, use the previous scheduled
                     # time. That way we don't put off any upcoming tasks whose
                     # schedule's get_scheduled_time method relies on the time
@@ -82,23 +88,9 @@ class BaseBackend(object):
                     scheduled_time = previous_record.scheduled_time if force and previous_record else None
 
                     if fake_task:
-                        self.logger.info('Faking task %s' % task.task_id)
                         self.fake_task(task, schedule, scheduled_time)
                     else:
-                        self.logger.info('Running task %s' % task.task_id)
                         self.run_task(task, schedule, scheduled_time)
-    
-    def get_task_info_list(self, tasks=None):
-        if tasks is None:
-            task_info_list = self._tasks.values()
-        else:
-            task_info_list = []
-            for task in tasks:
-                if task.task_id not in self._tasks:
-                    raise Exception('%s is not registered with this backend.' % task)
-                else:
-                    task_info_list.append(self._tasks[task.task_id])
-        return task_info_list
 
     def check_timeout(self, task):
         from .settings import DEFAULT_TIMEOUT
@@ -117,10 +109,14 @@ class BaseBackend(object):
         Checks to see whether any scheduled tasks have timed out and handles
         those that have.
         """
-        for info in self._tasks.values():
-            self.check_timeout(info.task)
+        for task in self.tasks:
+            self.check_timeout(task)
     
     def fake_task(self, task, schedule, scheduled_time=None):
+        # TODO: Do we need both of these?
+        print 'Faking periodic task "%s"' % task.task_id
+        self.logger.info('Faking periodic task "%s"' % task.task_id)
+
         if scheduled_time is None:
             scheduled_time = schedule.get_scheduled_time(task)
         
@@ -142,6 +138,11 @@ class BaseBackend(object):
         can call task.run() directly (avoiding this method), but it is highly
         discouraged.
         """
+        # TODO: Do we need both of these?
+        print 'Running periodic task "%s"' % task.task_id
+        self.logger.info('Running periodic task "%s"' % task.task_id)
+        
+        
         if scheduled_time is None:
             scheduled_time = schedule.get_scheduled_time(task)
         

@@ -52,9 +52,9 @@ class Command(BaseCommand):
         
         for backend in backends:
             if task_ids:
-                tasks = set([task for task in backend.scheduled_tasks if task.task_id in task_ids])
+                tasks = set([task for task in backend.tasks if task.task_id in task_ids])
             else:
-                tasks = backend.scheduled_tasks
+                tasks = backend.tasks
             if force_execution:
                 backend.run_tasks(tasks, fake=fake)
             else:
