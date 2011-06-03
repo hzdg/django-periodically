@@ -16,6 +16,6 @@ register.simple_task(task3, Every(timedelta(weeks=2)))
 
 @daily(hour=19, minute=38)
 @daily(hour=19, minute=38) # Duplicate. Shouldn't reschedule.
-@daily(hour=19, minute=39) # Not a duplicate. Should schedule again.
+@daily(hour=20, minute=13) # Not a duplicate. Should schedule again.
 def task4():
     print 'RUNNING exampleapp.periodictasks.task4'

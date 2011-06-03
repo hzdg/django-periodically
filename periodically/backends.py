@@ -1,4 +1,4 @@
-from .models import TaskLog
+from .models import ExecutionRecord
 from datetime import datetime
 from .signals import task_complete
 import logging
@@ -69,17 +69,13 @@ class BaseBackend(object):
             for schedule in schedules:
                 if schedule.task_should_run(task):
                     self.logger.info('Running task %s' % task.task_id)
-                    self.run_task(task)
+                    self.run_task(task, schedule)
 
     def check_timeout(self, task):
-        try:
-            task_log = TaskLog.objects.get(task_id=task.task_id, end_time__isnull=True)
-        except TaskLog.DoesNotExist:
-            pass
-        else:
-            from .settings import DEFAULT_TIMEOUT
+        from .settings import DEFAULT_TIMEOUT
+        for record in ExecutionRecord.objects.filter(task_id=task.task_id, end_time__isnull=True):
             timeout = getattr(task, 'timeout', DEFAULT_TIMEOUT)
-            running_time = datetime.now() - task_log.start_time
+            running_time = datetime.now() - record.start_time
             if running_time > timeout:
                 extra = {
                     'level': logging.ERROR,
@@ -95,7 +91,7 @@ class BaseBackend(object):
         for info in self._tasks.values():
             self.check_timeout(info.task)
     
-    def run_task(self, task):
+    def run_task(self, task, schedule):
         """
         Runs the provided task. This method is provided as a convenience to
         subclasses so that they do not have to implement all of the extra stuff
@@ -105,8 +101,9 @@ class BaseBackend(object):
         discouraged.
         """
         # Create the log for this execution.
-        log = TaskLog.objects.create(
+        log = ExecutionRecord.objects.create(
             task_id=task.task_id,
+            schedule_id=schedule.__hash__(),
             start_time=datetime.now(),
             end_time=None,)
 
@@ -143,10 +140,10 @@ class BaseBackend(object):
         else:
             completed_successfully = True
             
-        task_log = TaskLog.objects.get(task_id=task.task_id, end_time=None)
-        task_log.end_time = datetime.now()
-        task_log.completed_successfully = completed_successfully
-        task_log.save()
+        record = ExecutionRecord.objects.filter(task_id=task.task_id, end_time=None).order_by('-start_time')[0]
+        record.end_time = datetime.now()
+        record.completed_successfully = completed_successfully
+        record.save()
 
         # TODO: Retries.
 
