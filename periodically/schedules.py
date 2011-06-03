@@ -46,14 +46,29 @@ class Daily(Schedule):
     
     def get_next_run_time(self, task):
         previous_record = self.get_previous_record(task)
+        today = datetime.date.today()
+        time = datetime.time(self.hour, self.minute, self.second, self.microsecond)
+        now = datetime.datetime.now()
+        
         if previous_record:
             previous_run_date = datetime.datetime.date(previous_record.scheduled_time)
             next_run_date = previous_run_date + datetime.timedelta(days=1)
+            next_run_time = datetime.datetime.combine(next_run_date, time)
+            use_last_skipped_time = next_run_time < now
         else:
-            next_run_date = datetime.date.today()
+            use_last_skipped_time = True
 
-        return datetime.datetime.combine(next_run_date, datetime.time(self.hour,
-            self.minute, self.second, self.microsecond))
+        # If the next scheduled time already happened, just use the last
+        # skipped time. Otherwise, we'd end up scheduling an execution for
+        # each missed day.
+        if use_last_skipped_time:
+            todays_run_time = datetime.datetime.combine(today, time)
+            if todays_run_time < now:
+                next_run_time = todays_run_time
+            else:
+                next_run_time = todays_run_time - datetime.timedelta(days=1)
+
+        return next_run_time
 
 
 class Hourly(PeriodicSchedule):
