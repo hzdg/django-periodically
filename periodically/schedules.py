@@ -24,7 +24,8 @@ class PeriodicSchedule(Schedule):
         return not previous_record or datetime.now() - previous_record.start_time >= self.repeat_interval
     
     def __hash__(self):
-        return hash((PeriodicSchedule, self.repeat_interval))
+        class_name = '%s.%s' % (self.__module__, self.__class__)
+        return hash((class_name, self.repeat_interval))
     
 
 class Daily(Schedule):
@@ -36,7 +37,8 @@ class Daily(Schedule):
         self.microsecond = microsecond
     
     def __hash__(self):
-        return hash((Daily, self.hour, self.minute, self.second, self.microsecond))
+        class_name = '%s.%s' % (self.__module__, self.__class__)
+        return hash((class_name, self.hour, self.minute, self.second, self.microsecond))
     
     def task_should_run(self, task):
         previous_record = self.get_previous_record(task)
