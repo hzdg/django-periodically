@@ -50,26 +50,30 @@ class BaseBackend(object):
         their timeout. The optional <code>tasks</code> argument allows you to
         run only a subset of the registered tasks.
         """
-        if tasks is None:
-            tasks_to_run = self._tasks.values()
-        else:
-            tasks_to_run = []
-            for task in tasks:
-                if task.task_id not in self._tasks:
-                    raise Exception('%s is not registered with this backend.' % task)
-                else:
-                    tasks_to_run.append(self._tasks[task.task_id])
-
-        for info in tasks_to_run:
+        for info in self.get_task_info_list(tasks):
             task = info.task
             schedules = info.schedules
             
             # Cancel the task if it's timed out.
             self.check_timeout(task)
+            
+            # Run the task if it's due (or past due).
             for schedule in schedules:
-                if schedule.task_should_run(task):
+                if schedule.get_next_run_time(task) <= datetime.now():
                     self.logger.info('Running task %s' % task.task_id)
                     self.run_task(task, schedule)
+
+    def get_task_info_list(self, tasks=None):
+        if tasks is None:
+            task_info_list = self._tasks.values()
+        else:
+            task_info_list = []
+            for task in tasks:
+                if task.task_id not in self._tasks:
+                    raise Exception('%s is not registered with this backend.' % task)
+                else:
+                    task_info_list.append(self._tasks[task.task_id])
+        return task_info_list
 
     def check_timeout(self, task):
         from .settings import DEFAULT_TIMEOUT
