@@ -74,6 +74,13 @@ class BaseBackend(object):
                 # Cancel the task if it's timed out.
                 # FIXME: This should only be called once per task (no matter how many times it's scheduled).
                 self.check_timeout(task)
+                
+                # If there are still tasks running, don't run the queue (as we
+                # could mess up the order).
+                if ExecutionRecord.objects.filter(end_time__isnull=True):
+                    print 'There are still tasks running; no new tasks will be run'
+                    # TODO: Should this behave differently if force == True?
+                    return
             
                 # Run the task if it's due (or past due).
                 if force or schedule.get_scheduled_time(task) <= datetime.now():
