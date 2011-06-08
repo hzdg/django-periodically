@@ -3,7 +3,7 @@ import datetime
 
 
 _settings = getattr(project_settings, 'PERIODICALLY_SETTINGS', {})
-DEFAULT_TIMEOUT = _settings.get('DEFAULT_TIMEOUT', datetime.timedelta(minutes=10))
+DEFAULT_TIMEOUT = _settings.get('DEFAULT_TIMEOUT', datetime.timedelta(hours=1))
 SCHEDULERS = _settings.get('SCHEDULERS', {})
 
 # Add the default scheduler it hasn't been explicitly overridden. This way, you
