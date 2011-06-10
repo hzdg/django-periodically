@@ -108,7 +108,7 @@ class BaseBackend(object):
                     'level': logging.ERROR,
                     'msg': 'Task timed out after %s.' % running_time,
                 }
-                self.complete_task(task, extra=extra)
+                self.complete_task(task, False, extra=extra)
     
     def check_timeouts(self):
         """
@@ -169,19 +169,28 @@ class BaseBackend(object):
                 'msg': str(err),
                 'exc_info': sys.exc_info(),
             }
+            success = False
+        except (KeyboardInterrupt, SystemExit), err:
+            extra = {
+                'level': logging.DEBUG,
+                'msg': 'The task was cancelled by the user.',
+            }
+            success = False
+            raise
         else:
             extra = None
-
-        if extra is not None or getattr(task, 'is_blocking', True):
-            self.complete_task(task, extra=extra)
+            success = True
+        finally:
+            if not success or getattr(task, 'is_blocking', True):
+                self.complete_task(task, success, extra=extra)
     
     def _create_receiver(self, sender):
         def receiver(task, extra=None):
             task_complete.disconnect(receiver, sender, dispatch_uid=task.task_id)
-            self.complete_task(task, extra=extra)
+            self.complete_task(task, True, extra=extra)
         return receiver
     
-    def complete_task(self, task, extra=None):
+    def complete_task(self, task, success=True, extra=None):
         """
         Marks a task as complete and performs other post-completion tasks. The
         <code>extra</code> argument is a dictionary of values to be passed to
@@ -189,13 +198,10 @@ class BaseBackend(object):
         """
         if extra is not None:
             self.logger.log(**extra)
-            completed_successfully = extra.get('level', logging.ERROR) != logging.ERROR
-        else:
-            completed_successfully = True
             
         record = ExecutionRecord.objects.filter(task_id=task.task_id, end_time=None).order_by('-start_time')[0]
         record.end_time = datetime.now()
-        record.completed_successfully = completed_successfully
+        record.completed_successfully = success
         record.save()
 
         # TODO: Retries.
