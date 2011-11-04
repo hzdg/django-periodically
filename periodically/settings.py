@@ -2,7 +2,7 @@ from django.conf import settings as project_settings
 import datetime
 
 
-_settings = getattr(project_settings, 'PERIODICALLY_SETTINGS', {})
+_settings = getattr(project_settings, 'PERIODICALLY', {})
 DEFAULT_TIMEOUT = _settings.get('DEFAULT_TIMEOUT', datetime.timedelta(hours=1))
 SCHEDULERS = _settings.get('SCHEDULERS', {})
 

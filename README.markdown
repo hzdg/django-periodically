@@ -67,7 +67,7 @@ One of the things that makes Periodically so flexible is its scheduler backend s
 
 In `settings.py`:
 
-	PERIODICALLY_SETTINGS = {
+	PERIODICALLY = {
 		...
 	    'SCHEDULERS': {
 			'special': {
@@ -84,7 +84,7 @@ Then, in your app's `periodictasks.py` file:
 
 This setup works great for scheduling a specific task with a particular backend, but if you find that you want to change the backend that all of your tasks use, it's easier to just override the default:
 
-	PERIODICALLY_SETTINGS = {
+	PERIODICALLY = {
 		...
 	    'SCHEDULERS': {
 			'default': {
@@ -99,7 +99,7 @@ With the above code in your `settings.py` file, all tasks will use `myapp.MySpec
 
 Sometimes it's convenient to create backend groups. A good example of this is when you have several different backends that should all be triggered by a cron job. Here's how you add backends to groups in your `settings.py` file:
 
-	PERIODICALLY_SETTINGS = {
+	PERIODICALLY = {
 		...
 	    'SCHEDULERS': {
 			'default': {
