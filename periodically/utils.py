@@ -1,5 +1,7 @@
+from datetime import datetime
 from django.utils import importlib
 from . import settings
+from .models import ExecutionRecord
 
 
 class InvalidBackendAliasError(Exception):
@@ -10,6 +12,20 @@ class InvalidBackendAliasError(Exception):
 class InvalidBackendError(Exception):
     def __init__(self, backend):
         Exception.__init__(self, 'Could not find backend %s' % backend)
+
+
+def get_scheduled_time(task, schedule, now=None):
+    previous_record = ExecutionRecord.objects.get_most_recent(task, schedule)
+    if not now:
+        now = datetime.now()
+    previous_scheduled_time = schedule.time_before(now)
+    if not previous_record:
+        scheduled_time = previous_scheduled_time
+    elif previous_record.scheduled_time < previous_scheduled_time:
+        scheduled_time = previous_scheduled_time
+    else:
+        scheduled_time = schedule.time_after(now)
+    return scheduled_time    
 
 
 def get_scheduler_backend_class(backend_alias=None):

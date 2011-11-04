@@ -1,6 +1,7 @@
 from .models import ExecutionRecord
 from datetime import datetime
 from .signals import task_complete
+from .utils import get_scheduled_time
 import logging
 import sys
 
@@ -11,6 +12,7 @@ import sys
 class BaseBackend(object):
     """
     Keeps a schedule of periodic tasks.
+
     """
     _schedules = []
 
@@ -83,14 +85,12 @@ class BaseBackend(object):
                     return
             
                 # Run the task if it's due (or past due).
-                if force or schedule.get_scheduled_time(task) <= datetime.now():
-                    previous_record = schedule.get_previous_record(task)
+                if force or get_scheduled_time(task, schedule) <= datetime.now():
+                    previous_record = ExecutionRecord.objects.get_most_recent(task, schedule)
                     fake_task = fake or fake is None and previous_record is None
                 
                     # If we're forcing the task, use the previous scheduled
-                    # time. That way we don't put off any upcoming tasks whose
-                    # schedule's get_scheduled_time method relies on the time
-                    # of the previous execution.
+                    # time.
                     scheduled_time = previous_record.scheduled_time if force and previous_record else None
 
                     if fake_task:
@@ -100,7 +100,8 @@ class BaseBackend(object):
 
     def check_timeout(self, task):
         from .settings import DEFAULT_TIMEOUT
-        for record in ExecutionRecord.objects.filter(task_id=task.task_id, end_time__isnull=True):
+        for record in ExecutionRecord.objects.filter(task_id=task.task_id,
+                end_time__isnull=True):
             timeout = getattr(task, 'timeout', DEFAULT_TIMEOUT)
             running_time = datetime.now() - record.start_time
             if running_time > timeout:
@@ -124,7 +125,7 @@ class BaseBackend(object):
         self.logger.info('Faking periodic task "%s"' % task.task_id)
 
         if scheduled_time is None:
-            scheduled_time = schedule.get_scheduled_time(task)
+            scheduled_time = get_scheduled_time(task, schedule)
         
         # Create the log for this execution.
         log = ExecutionRecord.objects.create(
@@ -150,7 +151,7 @@ class BaseBackend(object):
         
         
         if scheduled_time is None:
-            scheduled_time = schedule.get_scheduled_time(task)
+            scheduled_time = get_scheduled_time(task, schedule)
         
         # Create the log for this execution.
         log = ExecutionRecord.objects.create(
@@ -195,11 +196,14 @@ class BaseBackend(object):
         Marks a task as complete and performs other post-completion tasks. The
         <code>extra</code> argument is a dictionary of values to be passed to
         <code>Logger.log()</code> as keyword args.
+
         """
         if extra is not None:
             self.logger.log(**extra)
             
-        record = ExecutionRecord.objects.filter(task_id=task.task_id, end_time=None).order_by('-start_time')[0]
+        record = ExecutionRecord.objects \
+                .filter(task_id=task.task_id, end_time=None) \
+                .order_by('-start_time')[0]
         record.end_time = datetime.now()
         record.completed_successfully = success
         record.save()
@@ -211,5 +215,6 @@ class DefaultBackend(BaseBackend):
     """
     A backend that only runs tasks when explicitly told to (i.e. when its
     `run_scheduled_tasks()` method is invoked).
+
     """
     pass
