@@ -62,6 +62,8 @@ class BaseBackend(object):
         self._run_tasks(tasks, fake, True)
     
     def _run_tasks(self, tasks=None, fake=None, force=False):
+        now = datetime.now()
+
         # Verify that the provided tasks actually exist.
         if tasks:
             for task in tasks:
@@ -75,7 +77,7 @@ class BaseBackend(object):
                 
                 # Cancel the task if it's timed out.
                 # FIXME: This should only be called once per task (no matter how many times it's scheduled).
-                self.check_timeout(task)
+                self.check_timeout(task, now)
                 
                 # If there are still tasks running, don't run the queue (as we
                 # could mess up the order).
@@ -85,7 +87,7 @@ class BaseBackend(object):
                     return
             
                 # Run the task if it's due (or past due).
-                if force or get_scheduled_time(task, schedule) <= datetime.now():
+                if force or get_scheduled_time(task, schedule, now) <= now:
                     previous_record = ExecutionRecord.objects.get_most_recent(task, schedule)
                     fake_task = fake or fake is None and previous_record is None
                 
@@ -94,16 +96,20 @@ class BaseBackend(object):
                     scheduled_time = previous_record.scheduled_time if force and previous_record else None
 
                     if fake_task:
-                        self.fake_task(task, schedule, scheduled_time)
+                        self.fake_task(task, schedule, scheduled_time, now)
                     else:
-                        self.run_task(task, schedule, scheduled_time)
+                        self.run_task(task, schedule, scheduled_time, now)
 
-    def check_timeout(self, task):
+    def check_timeout(self, task, now=None):
         from .settings import DEFAULT_TIMEOUT
+
+        if now is None:
+            now = datetime.now()
+
         for record in ExecutionRecord.objects.filter(task_id=task.task_id,
                 end_time__isnull=True):
             timeout = getattr(task, 'timeout', DEFAULT_TIMEOUT)
-            running_time = datetime.now() - record.start_time
+            running_time = now - record.start_time
             if running_time > timeout:
                 extra = {
                     'level': logging.ERROR,
@@ -111,32 +117,32 @@ class BaseBackend(object):
                 }
                 self.complete_task(task, False, extra=extra)
     
-    def check_timeouts(self):
+    def check_timeouts(self, now=None):
         """
         Checks to see whether any scheduled tasks have timed out and handles
         those that have.
         """
         for task in self.tasks:
-            self.check_timeout(task)
+            self.check_timeout(task, now)
     
-    def fake_task(self, task, schedule, scheduled_time=None):
+    def fake_task(self, task, schedule, scheduled_time=None, now=None):
         # TODO: Do we need both of these?
         print 'Faking periodic task "%s"' % task.task_id
         self.logger.info('Faking periodic task "%s"' % task.task_id)
 
         if scheduled_time is None:
-            scheduled_time = get_scheduled_time(task, schedule)
+            scheduled_time = get_scheduled_time(task, schedule, now)
         
         # Create the log for this execution.
         log = ExecutionRecord.objects.create(
             task_id=task.task_id,
             schedule_id=schedule.__hash__(),
             scheduled_time=scheduled_time,
-            start_time=datetime.now(),
-            end_time=datetime.now(),
+            start_time=now,
+            end_time=now,
             is_fake=True,)
     
-    def run_task(self, task, schedule, scheduled_time=None):
+    def run_task(self, task, schedule, scheduled_time=None, now=None):
         """
         Runs the provided task. This method is provided as a convenience to
         subclasses so that they do not have to implement all of the extra stuff
@@ -144,6 +150,7 @@ class BaseBackend(object):
         emails, etc. If you want, your subclass's run_scheduled_tasks method
         can call task.run() directly (avoiding this method), but it is highly
         discouraged.
+
         """
         # TODO: Do we need both of these?
         print 'Running periodic task "%s"' % task.task_id
@@ -151,14 +158,14 @@ class BaseBackend(object):
         
         
         if scheduled_time is None:
-            scheduled_time = get_scheduled_time(task, schedule)
+            scheduled_time = get_scheduled_time(task, schedule, now)
         
         # Create the log for this execution.
         log = ExecutionRecord.objects.create(
             task_id=task.task_id,
             schedule_id=schedule.__hash__(),
             scheduled_time=scheduled_time,
-            start_time=datetime.now(),
+            start_time=now,
             end_time=None,)
 
         # Run the task.
