@@ -47,7 +47,7 @@ class Hourly(BaseSchedule):
         self.second = second
         self.microsecond = microsecond
 
-    def __unicode__(self):
+    def __str__(self):
         return 'Hourly @ %s' % time(minute=self.minute, second=self.second,
                 microsecond=self.microsecond)
 
@@ -63,7 +63,7 @@ class Daily(BaseSchedule):
         self.second = second
         self.microsecond = microsecond
 
-    def __unicode__(self):
+    def __str__(self):
         return 'Daily @ %s' % time(hour=self.hour, minute=self.minute,
                 second=self.second, microsecond=self.microsecond)
 
@@ -80,7 +80,7 @@ class Weekly(BaseSchedule):
         self.second = second
         self.microsecond = microsecond
 
-    def __unicode__(self):
+    def __str__(self):
         day_name = _time.strftime('%A', _time.strptime(str(self.day), '%w'))
         return '%s @ %s' % (day_name, time(hour=self.hour, minute=self.minute,
                 second=self.second, microsecond=self.microsecond))
@@ -109,5 +109,5 @@ class Every(BaseSchedule):
         delta_in_ms = interval * int(ms_since_start / interval)
         return self.starting_at + timedelta(milliseconds=delta_in_ms)
 
-    def __unicode__(self):
+    def __str__(self):
         return 'Every %s' % self.repeat_interval
