@@ -3,8 +3,11 @@ from .models import ExecutionRecord
 
 
 class Schedule(object):
+
     def get_previous_record(self, task):
-        record_list = ExecutionRecord.objects.filter(task_id=task.task_id, schedule_id=self.__hash__()).order_by('-start_time')
+        record_list = ExecutionRecord.objects \
+                .filter(task_id=task.task_id, schedule_id=self.__hash__()) \
+                .order_by('-start_time')
         if record_list:
             return record_list[0]
         else:
@@ -18,40 +21,44 @@ class Schedule(object):
 
 
 class PeriodicSchedule(Schedule):
-        
+
     def get_scheduled_time(self, task):
         previous_record = self.get_previous_record(task)
         if previous_record:
-            next_run_time = previous_record.scheduled_time + self.repeat_interval
+            next_run_time = previous_record.scheduled_time \
+                    + self.repeat_interval
         else:
             next_run_time = datetime.datetime.now()
         return next_run_time
-    
+
     def __hash__(self):
         class_name = '%s.%s' % (self.__module__, self.__class__)
         return hash((class_name, self.repeat_interval))
-    
+
 
 class Daily(Schedule):
-    
+
     def __init__(self, hour=0, minute=0, second=0, microsecond=0):
         self.hour = hour
         self.minute = minute
         self.second = second
         self.microsecond = microsecond
-    
+
     def __hash__(self):
         class_name = '%s.%s' % (self.__module__, self.__class__)
-        return hash((class_name, self.hour, self.minute, self.second, self.microsecond))
-    
+        return hash((class_name, self.hour, self.minute, self.second,
+                self.microsecond))
+
     def get_scheduled_time(self, task):
         previous_record = self.get_previous_record(task)
         today = datetime.date.today()
-        time = datetime.time(self.hour, self.minute, self.second, self.microsecond)
+        time = datetime.time(self.hour, self.minute, self.second,
+                self.microsecond)
         now = datetime.datetime.now()
-        
+
         if previous_record:
-            previous_run_date = datetime.datetime.date(previous_record.scheduled_time)
+            previous_run_date = \
+                    datetime.datetime.date(previous_record.scheduled_time)
             scheduled_date = previous_run_date + datetime.timedelta(days=1)
             scheduled_time = datetime.datetime.combine(scheduled_date, time)
             use_last_skipped_time = scheduled_time < now
@@ -73,7 +80,7 @@ class Daily(Schedule):
 
 class Hourly(PeriodicSchedule):
     repeat_interval = datetime.timedelta(hours=1)
-    
+
     def __unicode__(self):
         return 'Hourly'
 
@@ -86,12 +93,14 @@ class Weekly(PeriodicSchedule):
 
 
 class Every(PeriodicSchedule):
-    def __init__(self, interval=None, days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0):
+
+    def __init__(self, interval=None, days=0, seconds=0, microseconds=0,
+            milliseconds=0, minutes=0, hours=0, weeks=0):
         super(Every, self).__init__()
         if interval is None:
-            interval = datetime.timedelta(days, seconds, microseconds, milliseconds,
-                minutes, hours, weeks)
+            interval = datetime.timedelta(days, seconds, microseconds,
+                milliseconds, minutes, hours, weeks)
         self.repeat_interval = interval
-    
+
     def __unicode__(self):
         return 'Every %s' % self.repeat_interval
