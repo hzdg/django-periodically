@@ -106,8 +106,8 @@ class Every(BaseSchedule):
         time_since_start = time - self.starting_at
         ms_since_start = time_since_start.microseconds / 1000 \
                 + time_since_start.total_seconds() * 1000
-        time = interval * int(ms_since_start / interval)
-        return datetime.fromtimestamp(time / 1000)
+        delta_in_ms = interval * int(ms_since_start / interval)
+        return self.starting_at + timedelta(milliseconds=delta_in_ms)
 
     def __unicode__(self):
         return 'Every %s' % self.repeat_interval
