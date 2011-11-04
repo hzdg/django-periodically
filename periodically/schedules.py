@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, date, time, timedelta
 from .models import ExecutionRecord
 
 
@@ -28,7 +28,7 @@ class PeriodicSchedule(Schedule):
             next_run_time = previous_record.scheduled_time \
                     + self.repeat_interval
         else:
-            next_run_time = datetime.datetime.now()
+            next_run_time = datetime.now()
         return next_run_time
 
     def __hash__(self):
@@ -49,18 +49,18 @@ class Daily(Schedule):
         return hash((class_name, self.hour, self.minute, self.second,
                 self.microsecond))
 
+
     def get_scheduled_time(self, task):
         previous_record = self.get_previous_record(task)
-        today = datetime.date.today()
-        time = datetime.time(self.hour, self.minute, self.second,
-                self.microsecond)
-        now = datetime.datetime.now()
+        today = date.today()
+        t = time(self.hour, self.minute, self.second, self.microsecond)
+        now = datetime.now()
 
         if previous_record:
             previous_run_date = \
-                    datetime.datetime.date(previous_record.scheduled_time)
-            scheduled_date = previous_run_date + datetime.timedelta(days=1)
-            scheduled_time = datetime.datetime.combine(scheduled_date, time)
+                    datetime.date(previous_record.scheduled_time)
+            scheduled_date = previous_run_date + timedelta(days=1)
+            scheduled_time = datetime.combine(scheduled_date, t)
             use_last_skipped_time = scheduled_time < now
         else:
             use_last_skipped_time = True
@@ -69,24 +69,24 @@ class Daily(Schedule):
         # skipped time. Otherwise, we'd end up scheduling an execution for
         # each missed day.
         if use_last_skipped_time:
-            todays_run_time = datetime.datetime.combine(today, time)
+            todays_run_time = datetime.combine(today, t)
             if todays_run_time < now:
                 scheduled_time = todays_run_time
             else:
-                scheduled_time = todays_run_time - datetime.timedelta(days=1)
+                scheduled_time = todays_run_time - timedelta(days=1)
 
         return scheduled_time
 
 
 class Hourly(PeriodicSchedule):
-    repeat_interval = datetime.timedelta(hours=1)
+    repeat_interval = timedelta(hours=1)
 
     def __unicode__(self):
         return 'Hourly'
 
 
 class Weekly(PeriodicSchedule):
-    repeat_interval = datetime.timedelta(weeks=1)
+    repeat_interval = timedelta(weeks=1)
 
     def __unicode__(self):
         return 'Weekly'
@@ -98,7 +98,7 @@ class Every(PeriodicSchedule):
             milliseconds=0, minutes=0, hours=0, weeks=0):
         super(Every, self).__init__()
         if interval is None:
-            interval = datetime.timedelta(days, seconds, microseconds,
+            interval = timedelta(days, seconds, microseconds,
                 milliseconds, minutes, hours, weeks)
         self.repeat_interval = interval
 
