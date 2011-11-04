@@ -13,7 +13,7 @@ class ExecutionRecordManager(models.Manager):
 
 class ExecutionRecord(models.Model):
     task_id = models.CharField(max_length=255)
-    schedule_id = models.BigIntegerField()
+    schedule_id = models.CharField(max_length=32)
     scheduled_time = models.DateTimeField()
     start_time = models.DateTimeField()
     end_time = models.DateTimeField(blank=True, null=True)

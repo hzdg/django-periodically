@@ -140,7 +140,7 @@ class BaseBackend(object):
         # Create the log for this execution.
         log = ExecutionRecord.objects.create(
             task_id=task.task_id,
-            schedule_id=schedule.__hash__(),
+            schedule_id=schedule.schedule_id,
             scheduled_time=scheduled_time,
             start_time=now,
             end_time=now,
@@ -167,7 +167,7 @@ class BaseBackend(object):
         # Create the log for this execution.
         log = ExecutionRecord.objects.create(
             task_id=task.task_id,
-            schedule_id=schedule.__hash__(),
+            schedule_id=schedule.schedule_id,
             scheduled_time=scheduled_time,
             start_time=now,
             end_time=None,

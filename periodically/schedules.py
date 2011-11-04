@@ -1,5 +1,6 @@
 import time as _time
 from datetime import datetime, date, time, timedelta
+from hashlib import md5
 
 
 class Schedule(object):
@@ -9,9 +10,6 @@ class Schedule(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-    def __hash__(self):
-        return self.schedule_id
 
 
 class BaseSchedule(object):
@@ -24,7 +22,7 @@ class BaseSchedule(object):
         class_name = '%s.%s' % (self.__class__.__module__,
                 self.__class__.__name__)
         time_args = tuple([getattr(self, name) for name in self._time_attrs])
-        return hash((class_name, time_args))
+        return md5(str((class_name, time_args))).hexdigest()
 
     def time_before(self, time):
         kwargs = dict((k, getattr(self, k)) for k in self._time_attrs)
