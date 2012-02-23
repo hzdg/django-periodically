@@ -86,6 +86,11 @@ class Weekly(BaseSchedule):
                 second=self.second, microsecond=self.microsecond))
 
 
+def total_seconds(td):
+    """Since ``timedelta.total_seconds()`` is new in 2.7"""
+    return float(td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6) / 10**6
+
+
 class Every(BaseSchedule):
     _time_attrs = ['repeat_interval']
 
@@ -102,10 +107,10 @@ class Every(BaseSchedule):
     def time_before(self, time):
         # Uses "perfect time" (no leap years, etc.)
         interval = self.repeat_interval.microseconds / 1000 \
-                + self.repeat_interval.total_seconds() * 1000
+                + total_seconds(self.repeat_interval) * 1000
         time_since_start = time - self.starting_at
         ms_since_start = time_since_start.microseconds / 1000 \
-                + time_since_start.total_seconds() * 1000
+                + total_seconds(time_since_start) * 1000
         delta_in_ms = interval * int(ms_since_start / interval)
         return self.starting_at + timedelta(milliseconds=delta_in_ms)
 
