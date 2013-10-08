@@ -23,39 +23,47 @@ Installation
 Usage
 -----
 
-### Defining and Scheduling Tasks
+Defining and Scheduling Tasks
+``````````````````````````````
 
 Periodically gives you a few ways to schedule periodic tasks. The easiest is to use the included decorators:
 
+.. code-block:: python
+
     from periodically.decorators import *
-    
+
     @hourly()
     def my_task():
         print 'Do something!'
-    
+
     @every(minutes=45)
     def my_other_task():
         print 'Do something else every 45 minutes!'
 
 However, you can also define task classes:
 
+.. code-block:: python
+
     from periodically.tasks import PeriodicTask
     from periodically import register
     from periodically.schedules import Daily
-    
+
     # Define the task.
     class MyTask(PeriodicTask):
         def run(self):
             print 'Do something.'
-    
+
     # Schedule the task.
     register.task(MyTask(), Daily())
 
 Tasks can be scheduled anywhere in your project, but Periodically automatically looks for a `periodictasks` module in your `INSTALLED_APPS`, so it's probably a good idea to define all your tasks in `myapp/periodictasks.py`.
 
-### Running Your Tasks
+Running Your Tasks
+``````````````````
 
 Periodically uses a pluggable backend system to decouple the defining and scheduling of your tasks from their execution. **The default backend will not run your tasks automatically**, so you need to tell it to by using the `runtasks` management command. Generally, you would use a cronjob (or similar) to do this.  For example, placing the following line in your crontab file would check for tasks that need to be run every five minutes:
+
+.. code-block:: python
 
     */5 * * * * python /path/to/manage.py runtasks
 
@@ -63,20 +71,25 @@ Periodically uses a pluggable backend system to decouple the defining and schedu
 
 One of the things that makes Periodically so flexible is its scheduler backend system. A single project can even use multiple backends!
 
-#### Using Custom Backends
+Using Custom Backends
+`````````````````````
 
 In `settings.py`:
+
+.. code-block:: python
 
 	PERIODICALLY = {
 		...
 	    'SCHEDULERS': {
-			'special': {
-				'backend': 'myapp.MySpecialBackend',
-			},
-	    },
-	}
+            'special': {
+                'backend': 'myapp.MySpecialBackend',
+                },
+            },
+        }
 
 Then, in your app's `periodictasks.py` file:
+
+.. code-block:: python
 
     @hourly(backend='special')
     def do_something():
@@ -84,20 +97,25 @@ Then, in your app's `periodictasks.py` file:
 
 This setup works great for scheduling a specific task with a particular backend, but if you find that you want to change the backend that all of your tasks use, it's easier to just override the default:
 
-	PERIODICALLY = {
-		...
-	    'SCHEDULERS': {
-			'default': {
-				'backend': 'myapp.MySpecialBackend',
-			},
-	    },
-	}
+.. code-block:: python
+
+    PERIODICALLY = {
+        ...
+        'SCHEDULERS': {
+            'default': {
+                'backend': 'myapp.MySpecialBackend',
+            },
+        },
+    }
 
 With the above code in your `settings.py` file, all tasks will use `myapp.MySpecialBackend` by default.
 
-#### Backend Groups
+Backend Groups
+``````````````
 
 Sometimes it's convenient to create backend groups. A good example of this is when you have several different backends that should all be triggered by a cron job. Here's how you add backends to groups in your `settings.py` file:
+
+.. code-block:: python
 
 	PERIODICALLY = {
 		...
@@ -117,20 +135,27 @@ Sometimes it's convenient to create backend groups. A good example of this is wh
 	}
 
 Now you'll be able to use the `--group` option of the `runtasks` management command to selectively run tasks:
+.. code-block:: python
 
     python manage.py runtasks --group cron
 
 Your crontab would now look like this:
+.. code-block:: python
 
-    */5 * * * * python /path/to/manage.py runtasks --group cron
+*/5 * * * * python /path/to/manage.py runtasks --group cron
 
-##### TIP
+TIP
+```
 
 If you plan to use a cron job to trigger task execution, it's a good idea to always create a "cron" group. That way, if you ever add new non-cron backends, you won't have to change your crontab; you just won't add your new backend to the "cron" group.
 
-### Logging
+
+Logging
+```````
 
 Periodically uses Django's logging system to let you know when something goes wrong. To enable this, just add a "periodically" logger to your `settings.py` file:
+
+.. code-block:: python
 
     LOGGING = {
 	    ...
