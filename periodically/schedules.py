@@ -1,4 +1,5 @@
 import time as _time
+from django.utils import timezone
 from datetime import datetime, date, time, timedelta
 from hashlib import md5
 
@@ -96,7 +97,8 @@ class Every(BaseSchedule):
 
     def __init__(self, interval=None, days=0, seconds=0, microseconds=0,
             milliseconds=0, minutes=0, hours=0, weeks=0,
-            starting_at=datetime(1970, 1, 1)):
+                 starting_at=timezone.make_aware(datetime(1970, 1, 1),
+                                                 timezone.utc)):
         super(Every, self).__init__()
         if interval is None:
             interval = timedelta(days, seconds, microseconds,

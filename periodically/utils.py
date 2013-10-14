@@ -1,5 +1,4 @@
-from datetime import datetime
-from django.utils import importlib
+from django.utils import importlib, timezone
 from . import settings
 from .models import ExecutionRecord
 
@@ -17,7 +16,7 @@ class InvalidBackendError(Exception):
 def get_scheduled_time(task, schedule, now=None):
     previous_record = ExecutionRecord.objects.get_most_recent(task, schedule)
     if not now:
-        now = datetime.now()
+        now = timezone.now()
     previous_scheduled_time = schedule.time_before(now)
     if not previous_record:
         scheduled_time = previous_scheduled_time
