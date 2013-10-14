@@ -1,5 +1,5 @@
 from .models import ExecutionRecord
-from datetime import datetime
+from django.utils import timezone
 from .signals import task_complete
 from .utils import get_scheduled_time
 import logging
@@ -64,7 +64,7 @@ class BaseBackend(object):
         self._run_tasks(tasks, fake, True)
 
     def _run_tasks(self, tasks=None, fake=None, force=False):
-        now = datetime.now()
+        now = timezone.now()
 
         # Verify that the provided tasks actually exist.
         if tasks:
@@ -108,7 +108,7 @@ class BaseBackend(object):
         from .settings import DEFAULT_TIMEOUT
 
         if now is None:
-            now = datetime.now()
+            now = timezone.now()
 
         for record in ExecutionRecord.objects.filter(task_id=task.task_id,
                 end_time__isnull=True):
@@ -217,7 +217,7 @@ class BaseBackend(object):
         record = ExecutionRecord.objects \
                 .filter(task_id=task.task_id, end_time=None) \
                 .order_by('-start_time')[0]
-        record.end_time = datetime.now()
+        record.end_time = timezone.now()
         record.completed_successfully = success
         record.save()
 
