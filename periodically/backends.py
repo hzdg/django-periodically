@@ -1,3 +1,4 @@
+from __future__ import print_function
 from .models import ExecutionRecord
 from django.utils import timezone
 from .signals import task_complete
@@ -85,7 +86,7 @@ class BaseBackend(object):
                 # If there are still tasks running, don't run the queue (as we
                 # could mess up the order).
                 if ExecutionRecord.objects.filter(end_time__isnull=True):
-                    print 'There are still tasks running; no new tasks will be run'
+                    print('There are still tasks running; no new tasks will be run')
                     # TODO: Should this behave differently if force == True?
                     return
 
@@ -131,7 +132,7 @@ class BaseBackend(object):
 
     def fake_task(self, task, schedule, scheduled_time=None, now=None):
         # TODO: Do we need both of these?
-        print 'Faking periodic task "%s"' % task.task_id
+        print('Faking periodic task "%s"' % task.task_id)
         self.logger.info('Faking periodic task "%s"' % task.task_id)
 
         if scheduled_time is None:
@@ -158,7 +159,7 @@ class BaseBackend(object):
 
         """
         # TODO: Do we need both of these?
-        print 'Running periodic task "%s"' % task.task_id
+        print('Running periodic task "%s"' % task.task_id)
         self.logger.info('Running periodic task "%s"' % task.task_id)
 
         if scheduled_time is None:
