@@ -177,14 +177,14 @@ class BaseBackend(object):
         # Run the task.
         try:
             task.run()
-        except Exception, err:
+        except Exception as err:
             extra = {
                 'level': logging.ERROR,
                 'msg': str(err),
                 'exc_info': sys.exc_info(),
             }
             success = False
-        except (KeyboardInterrupt, SystemExit), err:
+        except (KeyboardInterrupt, SystemExit) as err:
             extra = {
                 'level': logging.DEBUG,
                 'msg': 'The task was cancelled by the user.',
