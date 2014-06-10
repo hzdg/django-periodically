@@ -9,5 +9,5 @@ SCHEDULERS = _settings.get('SCHEDULERS', {})
 # Add the default scheduler it hasn't been explicitly overridden. This way, you
 # won't have to redefine the default when you really just want to add a new
 # scheduler.
-if not SCHEDULERS.has_key('default'):
+if 'default' not in SCHEDULERS:
     SCHEDULERS['default'] = {'backend': 'periodically.backends.DefaultBackend'}
