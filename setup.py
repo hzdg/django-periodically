@@ -10,7 +10,7 @@ README = read('README.rst')
 
 setup(
     name = "django-periodically",
-    version = "0.2.0",
+    version = "0.3.0",
     description='Periodic task management for your Django projects.',
     url = 'https://github.com/hzdg/django-periodically',
     long_description=README,
