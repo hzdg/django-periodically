@@ -76,12 +76,12 @@ class BaseBackend(object):
 
         registered_task_ids = [task.task_id for task in tasks]
 
+        # Cancel the task if it's timed out.
+        # FIXME: This should only be called once per task (no matter how many times it's scheduled).
+        self.check_timeouts(now)
+
         for task, schedule in self._schedules:
             if not tasks or task.task_id in registered_task_ids:
-
-                # Cancel the task if it's timed out.
-                # FIXME: This should only be called once per task (no matter how many times it's scheduled).
-                self.check_timeout(task, now)
 
                 # If there are still tasks running, don't run the queue (as we
                 # could mess up the order).
