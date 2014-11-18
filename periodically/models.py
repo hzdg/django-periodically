@@ -3,7 +3,7 @@ from django.db import models
 
 class ExecutionRecordManager(models.Manager):
     def get_most_recent(self, task=None, schedule=None):
-        qs = self.get_query_set().order_by('-start_time').all()
+        qs = self.get_queryset().order_by('-start_time').all()
         if task:
             qs = qs.filter(task_id=task.task_id)
         if schedule:
